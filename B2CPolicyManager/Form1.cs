@@ -346,31 +346,10 @@ namespace B2CPolicyManager
                 HTTPResponse.AppendText("\r\n" + thisDay.ToString() + " - Updating selected policies.\r\n");
                 string token = await AuthenticationHelper.GetTokenForUserAsync();
                 if (token != null)
-                { 
+                {
                     HttpResponseMessage response = null;
                     string[] fileEntries = checkedPolicyList.CheckedItems.OfType<string>().ToArray();
-                    List<string> fileList = new List<string>(fileEntries);
-
-                    //if we found ext file, move to top
-                    var regexExtensions = @"\w*Extensions\w*";
-                    var indexExtensions = -1;
-                    indexExtensions = fileList.FindIndex(d => regexExtensions.Any(s => Regex.IsMatch(d.ToString(), regexExtensions)));
-                    if (indexExtensions > -1)
-                    {
-                        fileList.Insert(0, fileList[indexExtensions]);
-                        fileList.RemoveAt(indexExtensions + 1);
-                    }
-
-                    //if we found base file, move to top
-                    var regexBase = @"\w*Base\w*";
-                    var indexBase = -1;
-                    indexBase = fileList.FindIndex(d => regexBase.Any(s => Regex.IsMatch(d.ToString(), regexBase)));
-                    if (indexBase > -1)
-                    {
-                        fileList.Insert(0, fileList[indexBase]);
-                        fileList.RemoveAt(indexBase + 1);
-                    }
-
+                    List<string> fileList = GenerateFileList(fileEntries);
 
                     foreach (string file in fileList)
                     {
@@ -412,10 +391,42 @@ namespace B2CPolicyManager
                     {
                         HTTPResponse.AppendText(content);
                     }
-                    
                 }
             }
 
+        }
+
+        private static List<string> GenerateFileList(string[] fileEntries)
+        {
+            List<string> fileList = new List<string>(fileEntries);
+
+            const string regexExtensions = @"\w*Extensions\w*";
+            const string regexLocalization = @"\w*Localization\w*";
+            const string regexBase = @"\w*Base\w*";
+
+            var extensions = fileList.Where(x => regexExtensions.Any(s => Regex.IsMatch(x.ToString(), regexExtensions))).ToList();
+            var localizations = fileList.Where(x => regexLocalization.Any(s => Regex.IsMatch(x.ToString(), regexLocalization))).ToList();
+            var bases = fileList.Where(x => regexBase.Any(s => Regex.IsMatch(x.ToString(), regexBase))).ToList();
+
+            foreach (var extension in extensions.OrderByDescending(x => x))
+            {
+                fileList.Remove(extension);
+                fileList.Insert(0, extension);
+            }
+
+            foreach (var localization in localizations)
+            {
+                fileList.Remove(localization);
+                fileList.Insert(0, localization);
+            }
+
+            foreach (var basePolicy in bases)
+            {
+                fileList.Remove(basePolicy);
+                fileList.Insert(0, basePolicy);
+            }
+
+            return fileList;
         }
 
         private void checkedListBox1_SelectedIndexChanged(object sender, EventArgs e)
